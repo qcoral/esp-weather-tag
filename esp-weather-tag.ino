@@ -9,10 +9,10 @@
 #define MY_NTP_SERVER "ca.pool.ntp.org"
 #define MY_TZ "EST5EDT,M3.2.0,M11.1.0"
 
-#define EPD_CS D8    // GPIO 15
-#define EPD_DC D4    // GPIO 2
-#define EPD_RST D1   // GPIO 5
-#define EPD_BUSY -1 // Waits a fixed delay, saves pins
+#define EPD_CS D0
+#define EPD_DC D8
+#define EPD_RST -1  // can set to -1 and share with microcontroller Reset!
+#define EPD_BUSY -1 // can set to -1 to not use a pin (will wait a fixed delay)
 
 LOLIN_SSD1680 EPD(250, 122, EPD_DC, EPD_RST, EPD_CS, EPD_BUSY); //hardware SPI
 
@@ -48,12 +48,13 @@ void printTime() {
    Serial.println();
    EPD.clearBuffer();
    EPD.setCursor(0, 0);
+   EPD.fillScreen(EPD_WHITE);
    EPD.setTextColor(EPD_RED);
    EPD.setTextWrap(true);
    EPD.print(String(tm.tm_mday));
    Serial.println("displaying date");
    EPD.display();
-   delay(25000);
+   delay(30000);
 }
 
 void setup() {
@@ -100,7 +101,7 @@ void loop() {
       Serial.println(error.f_str());
       return;
    }
-   for (int i = 0; i < 3; i++) {
+   for (int i = 1; i <= 23; i++) {
       Serial.print(F("temp hour "));
       Serial.print(i);
       Serial.print(F(": "));
@@ -108,6 +109,7 @@ void loop() {
       Serial.println(F("C"));
       EPD.clearBuffer();
       EPD.setCursor(0, 0);
+      EPD.fillScreen(EPD_WHITE);
       EPD.setTextColor(EPD_BLACK);
       EPD.setTextWrap(true);
       EPD.setTextSize(5);
@@ -124,6 +126,8 @@ void lightsleep() {
   wifi_fpm_set_sleep_type(LIGHT_SLEEP_T);
   wifi_fpm_set_wakeup_cb(wakeupCallback);
   wifi_fpm_open();
-  wifi_fpm_do_sleep(10E6);
-  delay(25e3 + 1);
+  //wifi_fpm_do_sleep(3595000000);
+  //delay(3595000000 + 1);
+  wifi_fpm_do_sleep(30000000);
+  delay(30000000 + 1);
 }
