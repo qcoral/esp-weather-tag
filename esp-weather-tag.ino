@@ -28,7 +28,9 @@ void setup() {
    updateDisplay();
    if (!checkfortime()) {
       incrementTime();
-      ESP.deepSleep(3565000000);
+      //ESP.deepSleep(3565000000);
+      Serial.println("this is incrementation");
+      ESP.deepSleep(10000000);
    }
    configTime(MY_TZ, MY_NTP_SERVER);
    fetchandwritedata();
