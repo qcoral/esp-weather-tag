@@ -23,6 +23,7 @@ tm tm;
 void setup() {
    // Initialize serial port
    Serial.begin(9600);
+   Serial.println("updating display");
    LittleFS.begin();
    EPD.begin();
    updateDisplay();
@@ -61,7 +62,7 @@ void fetchandwritedata() {
    http.begin(wc, "http://api.openweathermap.org/data/2.5/onecall?lat=***REMOVED***&lon=***REMOVED***&exclude=minutely,daily,alerts,current&appid=***REMOVED***&units=metric&lang=en");  //Specify request destination
    http.GET();                                  //Send the request
    
-   File file = LittleFS.open("/data.txt", "r+");
+   File file = LittleFS.open("/data.json", "r+");
    file.print(http.getStream());
    file.close();
    http.end();   //Close connection
@@ -69,6 +70,7 @@ void fetchandwritedata() {
 
 bool checkfortime() {
    File file = LittleFS.open("/hourcheck.txt", "r+");
+   Serial.println(file.read());
    if (file.read() == 25) {
       file.print("1");
       file.close();
@@ -80,15 +82,16 @@ bool checkfortime() {
 }
 
 void updateDisplay() {
-   File file = LittleFS.open("/data.txt", "r+");
-
-   char data = file.read() + '0';
+   Serial.println("updating display");
+   File file = LittleFS.open("/data.json", "r+");
+   File file2 = LittleFS.open("/hourcheck.txt", "r+");
 
    DynamicJsonDocument doc(24576);
 
-   DeserializationError error = deserializeJson(doc, String(data));
+   DeserializationError error = deserializeJson(doc, file);
    file.close();
-   int i = file.read() - '1';
+   int i = file2.read() - '0';
+   Serial.println(i);
    Serial.print(F("temp hour "));
    Serial.print(i);
    Serial.print(F(": "));
