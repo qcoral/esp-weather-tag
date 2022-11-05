@@ -17,6 +17,8 @@
 
 LOLIN_SSD1680 EPD(250, 122, EPD_DC, EPD_RST, EPD_CS, EPD_BUSY); //hardware SPI
 
+//testing github verification
+
 time_t now;
 tm tm;
 
