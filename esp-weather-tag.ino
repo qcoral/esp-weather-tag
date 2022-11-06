@@ -15,7 +15,7 @@
 #define EPD_RST -1  // can set to -1 and share with microcontroller Reset!
 #define EPD_BUSY -1 // can set to -1 to not use a pin (will wait a fixed delay)
 
-LOLIN_SSD1680 EPD(250, 122, EPD_DC, EPD_RST, EPD_CS, EPD_BUSY); //hardware SPI
+LOLIN_SSD1680 EPD(250, 122, EPD_DC, EPD_RST, EPD_CS, EPD_BUSY); //set up hardware SPI
 
 //testing github verification
 
@@ -23,17 +23,21 @@ time_t now;
 tm tm;
 
 void setup() {
-   // Initialize serial port
+  
    Serial.begin(9600);
    Serial.println("updating display");
    LittleFS.begin();
    EPD.begin();
    updateDisplay();
-   if (!checkfortime()) {
+  /* 
+  if the 24th hour has passed, reset the hour, fetch new data, fetch new time, wait until the seconds hits 59, then restart the ESP 
+  */ 
+ 
+   if (checkfortime()) {
       incrementTime();
       //ESP.deepSleep(3565000000);
       Serial.println("this is incrementation");
-      ESP.deepSleep(10000000);
+      ESP.deepSleep(10000000); // 10 seconds
    }
    configTime(MY_TZ, MY_NTP_SERVER);
    fetchandwritedata();
@@ -73,13 +77,13 @@ void fetchandwritedata() {
 bool checkfortime() {
    File file = LittleFS.open("/hourcheck.txt", "r+");
    Serial.println(file.read());
-   if (file.read() == 25) {
-      file.print("1");
-      file.close();
-      return true;
-   } else {
+   if (file.read() == 24) {
+      file.print("0");
       file.close();
       return false;
+   } else {
+      file.close();
+      return true;
    }
 }
 
