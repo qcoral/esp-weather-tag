@@ -16,12 +16,14 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+//random links: https://forum.arduino.cc/t/esp8266-ntp-tz-dst-example-simplified/632223
+//UNSURE OF WHAT TIME LIB 2 USE
+
 #include <LOLIN_EPD.h>
 #include <Adafruit_GFX.h>
-#include <time.h>
 #include <ArduinoJson.h>
 #include <WiFiManager.h>
-#include <PolledTimeout.h>
+#include <TimeLib.h>
 #include <ESP8266HTTPClient.h>
 #include <LittleFS.h>
 
@@ -57,26 +59,26 @@ void setup() {
   LittleFS.begin();
   EPD.begin();
   updateDisplay();  //update display before doing time operations (checking time + incrementation, then going to sleep)
-  /* 
 
-  if the 24th hour has passed, reset the hour, fetch new data, fetch new time, wait until the seconds hits 59, then restart the ESP 
-
-  */
+/* 
+  if the 24th hour has passed, reset the hour, fetch new data, fetch new time, wait until the seconds hits 59, then restart the ESP. If it has not been 24 hours,  
+*/
 
   if (checkfortime()) {
     incrementTime();
     Serial.println("this is incrementation");
-    //ESP.deepSleep(3565000000); 59 min and 25 seconds, leaves time for the reset routine to count down. 
+    //ESP.deepSleep(3598500000); 59 min and 58.5 seconds, leaves time for the reset routine to count down. 
     ESP.deepSleep(10000000);  // 10 seconds
   }
-  /*
-    reset routine
-  */
+
+/*
+  reset routine
+*/
   configTime(MY_TZ, MY_NTP_SERVER);
   fetchandwritedata();
-  time(&now);  // read the current time
+  time(&now);
   localtime_r(&now, &tm);
-  while (tm.tm_sec != 60) {
+  while (tm.tm_sec != 60) {1
   }
   ESP.restart();
 }
@@ -85,23 +87,24 @@ void loop() {
 }
 
 void fetchandwritedata() {
+/*
+  Connect to internet
+  TODO: Add failsafe in case no internet connection by 23:59
+*/
   WiFi.mode(WIFI_STA);
   WiFiManager wm;
   wm.autoConnect();
-
-  time(&now);
-  localtime_r(&now, &tm);
-  delay(2000);
 
   WiFiClient wc;
   HTTPClient http;
 
   http.useHTTP10(true);
   http.begin(wc, "http://api.openweathermap.org/data/2.5/onecall?lat=***REMOVED***&lon=***REMOVED***&exclude=minutely,daily,alerts,current&appid=***REMOVED***&units=metric&lang=en");  //Specify request destination
-  http.GET();                                                                                                                                                                                   //Send the request
-
+  http.GET();                                                                                                                                                                                    //Send the request
+  
+  //write data
   File file = LittleFS.open("/data.json", "r+"); 
-  file.print(http.getStream());
+  file.print(http.getStream()); 
   file.close();
   http.end();  
 }
