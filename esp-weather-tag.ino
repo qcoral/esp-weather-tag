@@ -1,5 +1,5 @@
 /*
-  esp-weather-tag, refer to readme.md for more information. 
+  ESP Weather Tag. Please refer to README.md for more information. 
   Copyright (C) 2022  dari-studios
 
   This program is free software: you can redistribute it and/or modify
@@ -16,19 +16,6 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-//random links: https://forum.arduino.cc/t/esp8266-ntp-tz-dst-example-simplified/632223
-//UNSURE OF WHAT TIME LIB 2 USE
-
-#include <LOLIN_EPD.h>
-#include <Adafruit_GFX.h>
-#include <ArduinoJson.h>
-#include <WiFiManager.h>
-#include <ESP8266HTTPClient.h>
-#include <LittleFS.h>
-
-#define MY_NTP_SERVER "ca.pool.ntp.org"
-#define MY_TZ "EST5EDT,M3.2.0,M11.1.0"  //timezone, according to
-
 /* 
   Pin Mapping for Lolin ePaper SSD1680 to Wemos D1 Mini V4.0.0
   3V3 - 3.3V
@@ -40,6 +27,16 @@
   RST - RST 
   GND - GND
 */
+
+#include <LOLIN_EPD.h>
+#include <Adafruit_GFX.h>
+#include <ArduinoJson.h>
+#include <WiFiManager.h>
+#include <ESP8266HTTPClient.h>
+#include <LittleFS.h>
+
+#define MY_NTP_SERVER "ca.pool.ntp.org"  //NTP server
+#define MY_TZ "EST5EDT,M3.2.0,M11.1.0"   //timezone, according to IANA standard
 
 #define EPD_CS D0    // chip select
 #define EPD_DC D8    // data/command
@@ -54,44 +51,72 @@ tm tm;       //create struct to access time from
 void setup() {
 
   Serial.begin(9600);
-  Serial.println("updating display");  //debug, probably will remove in future
   LittleFS.begin();
   EPD.begin();
-  updateDisplay();  //update display before doing time operations (checking time + incrementation, then going to sleep)
 
-  /* 
-  if the 24th hour has passed, reset the hour, fetch new data, fetch new time, wait until the seconds hits 59, then restart the ESP. If it has not been 24 hours,  
+/* 
+  If there have been 24 updates, or hour.txt does not exist then do reset routine. Otherwise increment hour counter and go to sleep 
 */
 
   if (checkfortime()) {
+    updateDisplay();  //Update display with corresponding data using hour.txt and data.json.
     incrementTime();
     Serial.println("this is incrementation");
     //ESP.deepSleep(3598500000); 59 min and 58.5 seconds, leaves time for the reset routine to count down.
     ESP.deepSleep(10000000);  // 10 seconds
   }
 
-  /*
+/*
   reset routine
 */
+  LittleFS.format();  //reset filesystem when resetting data and time
+
+  File hour = LittleFS.open("/hour.txt", "w"); //Create and write to hour counter
+  hour.print("0");
+  hour.close();
+
+  fetchandwritedata(); //self explanatory
+
   configTime(MY_TZ, MY_NTP_SERVER);
-  fetchandwritedata();
-  time(&now);                //fetch time and store it into object "now"
-  localtime_r(&now, &tm);    //take time value and convert it into local calendar, then store in tm struct
-  while (tm.tm_sec != 59) {  //keep refreshing time
+  time(&now);              //fetch time and store it into object "now"
+  localtime_r(&now, &tm);  //take time value and convert it into local calendar, then store in tm struct
+
+  while (tm.tm_hour != 23 && tm.tm_min != 59 && tm.tm_sec != 59) {  //keep refreshing time till 23:59:59
     time(&now);
     localtime_r(&now, &tm);
   }
+
   ESP.restart();
 }
 
-void loop() {
+void updateDisplay() { //parses data from json, then uses the hour to display the correct data. If no json file then return. No write operations
+  if (!LittleFS.exists("/data.json")) {
+    return;
+  }
+
+  File data = LittleFS.open("/data.json", "r");
+  File hour = LittleFS.open("/hour.txt", "r");
+
+  DynamicJsonDocument doc(24576);
+
+  DeserializationError error = deserializeJson(doc, data);
+  data.close();  //data file is no longer needed after it is parsed
+  int time = hour.read() - '0';
+  hour.close();  // same with time
+  Serial.print("Update: ");
+  Serial.println(time);
+  Serial.print(F("temp hour "));
+  Serial.print(time);
+  Serial.print(F(": "));
+  Serial.print(String(doc["hourly"][time]["temp"]));
+  Serial.println(F("C"));
 }
 
-void fetchandwritedata() {
-/*
+void fetchandwritedata() { //fetches fresh data and writes it to data.json. Creates a new file and writes to it
+  /*
   Connect to internet
   TODO: Add failsafe in case no internet connection by 23:59
-*/
+  */
   WiFi.mode(WIFI_STA);
   WiFiManager wm;
   wm.autoConnect();
@@ -100,51 +125,42 @@ void fetchandwritedata() {
   HTTPClient http;
 
   http.useHTTP10(true);
-  http.begin(wc, "http://api.openweathermap.org/data/2.5/onecall?lat=***REMOVED***&lon=***REMOVED***&exclude=minutely,daily,alerts,current&appid=***REMOVED***&units=metric&lang=en");  //Specify request destination
-  http.GET();                                                                                                                                                                                   //Send the request
+  http.begin(wc, "http://api.openweathermap.org/data/2.5/onecall?lat=***REMOVED***&lon=***REMOVED***&exclude=minutely,daily,alerts,current&appid=***REMOVED***&units=metric&lang=en");
+  http.GET();
 
   //write data
-  File file = LittleFS.open("/data.json", "r+");
-  file.print(http.getStream());
-  file.close();
+  File data = LittleFS.open("/data.json", "w+");
+  data.print(http.getStream());
+  data.close();
   http.end();
 }
 
-bool checkfortime() {
-  File file = LittleFS.open("/hourcheck.txt", "r+");
-  Serial.println(file.read());
-  if (file.read() == 24) {
-    file.print("0");
-    file.close();
+bool checkfortime() {  //Waits for 24 updates, returns true before 25th starts. If not hour.txt is present then return false. No file created
+  File hour = LittleFS.open("/hour.txt", "r");
+  Serial.println(hour.read());
+  if (hour.read() == 24) {  //even though the time value is zero indexed, we don't add a delay before the reset routine so it goes one over before resetting.
+    hour.close();
     return false;
   } else {
-    file.close();
+    hour.close();
     return true;
   }
+  return false;
 }
 
-void updateDisplay() {
-  Serial.println("updating display");
-  File file = LittleFS.open("/data.json", "r+");
-  File file2 = LittleFS.open("/hourcheck.txt", "r+");
+void incrementTime() {  //read time, increment, wipe current time, write new time. Write operations.
+  File hour = LittleFS.open("/hour.txt", "r+"); //get val
+  int time = hour.read() - '0'; 
+  time++;
+  Serial.println(time);
+  hour.close();
 
-  DynamicJsonDocument doc(24576);
+  LittleFS.remove("/hour.txt"); //wipe
 
-  DeserializationError error = deserializeJson(doc, file);
-  file.close();
-  int i = file2.read() - '0';
-  Serial.println(i);
-  Serial.print(F("temp hour "));
-  Serial.print(i);
-  Serial.print(F(": "));
-  Serial.print(String(doc["hourly"][i]["temp"]));
-  Serial.println(F("C"));
+  File hour = LittleFS.open("/hour.txt", "w"); //write val
+  hour.print(time);
+  hour.close();
 }
 
-void incrementTime() {
-  File file = LittleFS.open("/hourcheck.txt", "r+");
-  int hour = file.read() - '0';
-  hour++;
-  file.write()
-  file.close();
+void loop() {
 }
