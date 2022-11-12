@@ -61,8 +61,6 @@ void setup() {
   LittleFS.begin();
   EPD.begin();
 
-
-  Serial.println("Starting main process"); //DBGPRNT
 /* 
   Update display, increment, then wait until next hour. Reset after 24th update.
 */
@@ -71,7 +69,6 @@ if (!checkfortime()) {
     updateDisplay();  //Update display with corresponding data using hour.txt and data.json.
     incrementTime();
     //ESP.deepSleep(3598500000); 59 min and 58.5 seconds, leaves time for the reset routine to count down.
-    Serial.println("time incremented, going to sleep"); //DBGPRNT
     ESP.deepSleep(10000000);  // 10 seconds
   } else {
     refreshdata();
@@ -105,7 +102,6 @@ void updateDisplay() {  //parses data from json, then uses the hour to display t
 }
 
 void refreshdata() {  //resets filesystem and hour count, stalls till 3:59:56, then refreshes data and restarts
-  Serial.println("refreshing data"); //DBGPRNT
 
   WiFi.mode(WIFI_STA);
   WiFiManager wm;
@@ -123,32 +119,23 @@ void refreshdata() {  //resets filesystem and hour count, stalls till 3:59:56, t
 
   LittleFS.format();  //reset filesystem
 
-  Serial.println("FS Formatted"); //DBGPRNT
-
   File hour = LittleFS.open("/hour.txt", "w");  //create hour file
-  hour.write(0);
+  hour.write(22);
   hour.close();
 
-  Serial.println("hour file written and stalling time"); //DBGPRNT
-
-  /*
-  while (tm.tm_hour != 13 || tm.tm_min != 32 || tm.tm_sec != 30) {  //keep stalling time till 03:59:56
+  while (tm.tm_hour != 03 || tm.tm_min != 59 || tm.tm_sec != 56) {  //keep stalling time till 03:59:56
     time(&now);
     localtime_r(&now, &tm);
     yield();
   }
-  */
 
-  Serial.println("time reached"); //DBGPRNT
 
   //fetch data
   http.useHTTP10(true);
-  http.begin(wc, "http://api.openweathermap.org/data/2.5/onecall?lat=***REMOVED***&lon=***REMOVED***&exclude=minutely,daily,alerts,current&appid=***REMOVED***&units=metric&lang=en");
+  http.begin(wc, "http://api.openweathermap.org/data/2.5/onecall?<YOUR_COORDINATES>&exclude=minutely,daily,alerts,current&appid=<YOUR_API_KEY>&units=metric&lang=en");
   http.GET();
 
   deserializeJson(json, http.getStream()); //deserialize https stream into json object
-
-  Serial.println("data fetched"); //DBGPRNT
 
   //write data
   File data = LittleFS.open("/data.json", "w+");
@@ -159,38 +146,27 @@ void refreshdata() {  //resets filesystem and hour count, stalls till 3:59:56, t
   data.close();
   http.end();
 
-  Serial.println("data written, restarting"); //DBGPRNT
-
   ESP.restart(); //reboot into updates
 }
 
 bool checkfortime() {  //Waits for 24 updates, returns true before 25th starts. If not hour.txt is present then return false. No file created
-  Serial.println("checkfortime is checking time"); //DBGPRNT
 
   if (!LittleFS.exists("/hour.txt")) {
-    Serial.println("hour file does not exist"); //DBGPRNT
     return true;
   }
 
   File hour = LittleFS.open("/hour.txt", "r");
 
-  Serial.print("checkfortime's hour is "); //DBGPRNT
-  Serial.println(hour.read()); //DBGPRNT
-
-  if (hour.read() == 24) {  //even though the time value is zero indexed, it's incremented after the update so it doesn't do a 25th
+  if (int(hour.read()) > 23) {  //even though the time value is zero indexed, it's incremented after the update so it doesn't do a 25th
     hour.close();
-    Serial.println("There has been 24 updates"); //DBGPRNT
     return true;
   } else {
     hour.close();
-    Serial.println("There have not been 24 updates"); //DBGPRNT
     return false;
   }
 }
 
 void incrementTime() {  //read time, increment, wipe current time, write new time. Write operations.
-
-  Serial.println("incrementing time"); //DBGPRNT
 
   File hour = LittleFS.open("/hour.txt", "r+");  //get val
   int time = hour.read();
@@ -201,8 +177,6 @@ void incrementTime() {  //read time, increment, wipe current time, write new tim
   time++;
   hourinc.write(time);
   hourinc.close();
-
-  Serial.println("time incremented"); //DBGPRNT
 }
 
 void loop() {
