@@ -14,5 +14,8 @@ ePaper based weather tag that gives daily weather updates on an hourly basis. Lo
   - https://arduino-esp8266.readthedocs.io/en/latest/filesystem.html
   - https://forum.arduino.cc/t/esp8266-ntp-tz-dst-example-simplified/632223
   - https://www.wemos.cc/en/latest/d1/d1_mini.html
- 
+  - https://arduinojson.org/v6/example/config/
+  - https://arduinojson.org/v6/how-to/use-arduinojson-with-httpclient/
+  - https://www.mischianti.org/2019/11/21/wemos-d1-mini-esp8266-the-three-type-of-sleep-mode-to-manage-energy-savings-part-4/
+  
 </details>
