@@ -106,6 +106,7 @@ void refreshdata() {  //resets filesystem and hour count, stalls till 3:59:56, t
   WiFi.mode(WIFI_STA);
   WiFiManager wm;
   configTime(MY_TZ, MY_NTP_SERVER);
+  String weatherurl = String() + "http://api.openweathermap.org/data/2.5/onecall?lat=" + LAT + "&lon=" + LON + "&exclude=minutely,daily,alerts,current&appid=" + API_KEY + "&units=metric&lang=en";
 
   wm.autoConnect("esp-weather-tag"); //creates new network called esp-weather-tag, stalls until network is found
 
@@ -129,10 +130,9 @@ void refreshdata() {  //resets filesystem and hour count, stalls till 3:59:56, t
     yield();
   }
 
-
   //fetch data
   http.useHTTP10(true);
-  http.begin(wc, "http://api.openweathermap.org/data/2.5/onecall?<YOUR_COORDINATES>&exclude=minutely,daily,alerts,current&appid=<YOUR_API_KEY>&units=metric&lang=en");
+  http.begin(wc, weatherurl);
   http.GET();
 
   deserializeJson(json, http.getStream()); //deserialize https stream into json object
@@ -172,6 +172,7 @@ void incrementTime() {  //read time, increment, wipe current time, write new tim
   int time = hour.read();
   hour.close();
   LittleFS.remove("/hour.txt");
+  //note: file.truncate does not seem to be functional atm, will look into it. 
 
   File hourinc = LittleFS.open("/hour.txt", "w+");
   time++;

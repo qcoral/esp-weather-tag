@@ -14,13 +14,16 @@
 
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
+  Get an API key from openweathermap.org. Uses onecall
 */
 #include <TZ.h>
 
 #define MY_NTP_SERVER "ca.pool.ntp.org"  //NTP server
 #define MY_TZ TZ_America_Toronto   //timezone set timezone
 
-#define LAT
-#define LON
+#define LAT "YOUR_LATITUDE"
+#define LON "YOUR_LONGITUDE"
 
-#define MY_API_KEY
+#define API_KEY "YOUR_API_KEY"
