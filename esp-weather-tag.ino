@@ -43,6 +43,7 @@
 /*
 <icons>
 */
+#include "icons.h"
 
 
 #define EPD_CS D6    // chip select
@@ -50,7 +51,7 @@
 #define EPD_RST -1   // share with microcontroller reset
 #define EPD_BUSY -1  // waits a fixed delay instead of using a pin, some sort of issue with that
 
-LOLIN_SSD1680 EPD(250, 122, EPD_DC, EPD_RST, EPD_CS, EPD_BUSY);  //set up hardware SPI
+LOLIN_SSD1680 epd(250, 122, EPD_DC, EPD_RST, EPD_CS, EPD_BUSY);  //set up hardware SPI
 
 time_t now;  //create object that can store time
 tm tm;       //create struct to access time from
@@ -59,7 +60,7 @@ void setup() {
 
   Serial.begin(9600);
   LittleFS.begin();
-  EPD.begin();
+  epd.begin();
 
 /* 
   Update display, increment, then wait until next hour. Reset after 24th update.
@@ -92,6 +93,11 @@ void updateDisplay() {  //parses data from json, then uses the hour to display t
   data.close();  //data file is no longer needed after it is parsed
   int time = hour.read();
   hour.close();  // same with time
+
+/*
+
+Serial version
+
   Serial.print("Update: ");
   Serial.println(time + 1);
   Serial.print(F("update hour "));
@@ -99,6 +105,13 @@ void updateDisplay() {  //parses data from json, then uses the hour to display t
   Serial.print(F(": "));
   Serial.print(String(json["hourly"][time]["temp"]));
   Serial.println(F("C"));
+*/
+  epd.clearDisplay();
+  
+
+  epd.display();
+  epd.deepSleep();
+
 }
 
 void refreshdata() {  //resets filesystem and hour count, stalls till 3:59:56, then refreshes data and restarts
