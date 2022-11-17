@@ -19,12 +19,12 @@
 /* 
   Pin Mapping for Lolin ePaper SSD1680 to Wemos D1 Mini V4.0.0
   3V3 - 3.3V
-  BUSY - No Pin
-  CS - GPIO12/D6
+  BUSY - GPIO4/D2
+  CS - GPIO15/D8
   SCK - GPIO14/D5
   MOSI - GPIO13/D7
-  DC - GPIO15/D8
-  RST - RST 
+  DC - GPIO0/D3
+  RST - GPIO2/D4
   GND - GND
 
   WAKE - GPIO16/D0 | MAKE SURE THIS IS CONNECTED OR IT WILL NOT WORK
@@ -32,7 +32,7 @@
 
 #include "settings.h" 
 
-#include <LOLIN_EPD.h>
+#include <GxEPD2_3C.h>
 #include <Adafruit_GFX.h>
 #include <ArduinoJson.h>
 #include <WiFiManager.h>
@@ -45,13 +45,7 @@
 */
 #include "icons.h"
 
-
-#define EPD_CS D6    // chip select
-#define EPD_DC D8    // data/command
-#define EPD_RST -1   // share with microcontroller reset
-#define EPD_BUSY -1  // waits a fixed delay instead of using a pin, some sort of issue with that
-
-LOLIN_SSD1680 epd(250, 122, EPD_DC, EPD_RST, EPD_CS, EPD_BUSY);  //set up hardware SPI
+GxEPD2_3C<GxEPD2_213_Z98c, GxEPD2_213_Z98c::HEIGHT> epd(GxEPD2_213_Z98c(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4)); // GDEY0213Z98 122x250, SSD1680. Usoing old style definitions in GxEPD2.
 
 time_t now;  //create object that can store time
 tm tm;       //create struct to access time from
@@ -60,7 +54,7 @@ void setup() {
 
   Serial.begin(9600);
   LittleFS.begin();
-  epd.begin();
+  epd.init();
 
 /* 
   Update display, increment, then wait until next hour. Reset after 24th update.
@@ -106,11 +100,6 @@ Serial version
   Serial.print(String(json["hourly"][time]["temp"]));
   Serial.println(F("C"));
 */
-  epd.clearDisplay();
-  
-
-  epd.display();
-  epd.deepSleep();
 
 }
 
