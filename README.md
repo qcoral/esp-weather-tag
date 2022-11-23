@@ -17,5 +17,6 @@ ePaper based weather tag that gives daily weather updates on an hourly basis. Lo
   - https://arduinojson.org/v6/example/config/
   - https://arduinojson.org/v6/how-to/use-arduinojson-with-httpclient/
   - https://www.mischianti.org/2019/11/21/wemos-d1-mini-esp8266-the-three-type-of-sleep-mode-to-manage-energy-savings-part-4/
-  
+  - https://openweathermap.org/api/one-call-api
+
 </details>
